@@ -2887,8 +2887,7 @@ function World:afterLoad(old, new)
   end
 
   if old < 265 then
-    -- Avoid Stacking of Litter on the ground. Attached to a version to avoid re-work for games saved after
-    -- however this is a non-breaking change for savegames
+    -- Multiple litter can no longer exist on a tile. Remove all but the highest order of litter.
 
     -- Group litter by tile, keeping the highest-precedence item per tile. The
     -- losers are collected and removed only afterwards otherwise it would lead to items being skipped.

@@ -97,7 +97,7 @@ describe("litter.lua: ", function()
     return existing
   end
 
-  -- ── isCleanable ───────────────────────────────────────────────────────────
+  -- -- isCleanable ----------------------------------------------------------
 
   describe("isCleanable", function()
     it("returns true for biohazard types", function()
@@ -134,7 +134,7 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- ── handyman task registration ─────────────────────────────────────────────
+  -- -- handyman task registration --------------------------------------------
 
   describe("handyman task", function()
     it("is added for cleanable litter", function()
@@ -157,7 +157,7 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- ── precedence: incoming higher ────────────────────────────────────────────
+  -- -- precedence: incoming higher  -------------------------------------------
 
   describe("precedence: higher incoming displaces lower existing", function()
     it("puke displaces banana", function()
@@ -200,7 +200,7 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- ── precedence: incoming lower ──────────────────────────────────────────────
+  -- -- precedence: incoming lower  ---------------------------------------------
 
   describe("precedence: lower incoming is discarded", function()
     it("banana does not displace puke", function()
@@ -231,7 +231,7 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- ── precedence: equal ───────────────────────────────────────────────────────
+  -- -- precedence: equal  -------------------------------------------------------
 
   describe("precedence: equal incoming is discarded", function()
     it("banana does not displace banana", function()
@@ -259,7 +259,7 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- ── soot immunity ───────────────────────────────────────────────────────────
+  -- -- soot immunity  ----------------------------------------------------------
 
   describe("soot immunity", function()
     it("soot is not displaced by biohazard", function()

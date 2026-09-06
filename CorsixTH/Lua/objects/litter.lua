@@ -113,18 +113,17 @@ end
 
 function Litter:setLitterType(anim_type, mirrorFlag)
   if anim_type then
-    local objectsInTile = self.world:getObjects(self.tile_x, self.tile_y)
-
-    --This should ideally be a single item at most but older saves might still contain more than one item
-    local litterToSetPrecedence = litter_precedence[anim_type]
+    local litter_to_set_precedence = litter_precedence[anim_type]
     local to_remove = {}
-    for _, tileObject in ipairs(objectsInTile) do
+
+    local objects_in_tile = self.world:getObjects(self.tile_x, self.tile_y)
+    for _, tileObject in ipairs(objects_in_tile) do
 
       -- List will contain this object as it was already registered so check for it
       if tileObject.object_type.id == "litter" and tileObject ~= self then
         local existing_type = litter_anim_to_type[tileObject.animation_idx]
         local existing_precedence = existing_type and litter_precedence[existing_type] or 0
-        if existing_precedence >= litterToSetPrecedence then
+        if existing_precedence >= litter_to_set_precedence then
           -- If existing litter on the ground has higher precedence cleanup self and return early
           self.world:removeObjectFromTile(self, self.tile_x, self.tile_y)
           self.world:destroyEntity(self)
