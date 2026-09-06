@@ -56,24 +56,24 @@ litter_types[2] = 1896
 litter_types[3] = 1898
 litter_types[4] = 1900
 
--- Litter precedence to decide what is shown in tile
-local litter_precedence = {}
+-- Litter rank to decide what is shown in tile
+local litter_rank = {}
 
 -- Bio-hazard (highest)
-litter_precedence["puke"] = 4
-litter_precedence["dead_rat"] = 3
-litter_precedence["pee"] = 2
+litter_rank["puke"] = 4
+litter_rank["dead_rat"] = 3
+litter_rank["pee"] = 2
 
 -- Random Trash (lowest)
-litter_precedence["soda_can"] = 1
-litter_precedence["banana"] = 1
-litter_precedence["paper"] = 1
-litter_precedence["bottle"] = 1
+litter_rank["soda_can"] = 1
+litter_rank["banana"] = 1
+litter_rank["paper"] = 1
+litter_rank["bottle"] = 1
 
 -- Explosion Damage (can't be cleaned by handyman so it can't be displaced by others)
-litter_precedence["soot_floor"] = 99
-litter_precedence["soot_wall"] = 99
-litter_precedence["soot_window"] = 99
+litter_rank["soot_floor"] = 99
+litter_rank["soot_wall"] = 99
+litter_rank["soot_window"] = 99
 
 class "Litter" (Entity)
 
@@ -106,41 +106,47 @@ function Litter:getWalkableTiles()
   return tiles
 end
 
-function Litter:getPrecedence()
+function Litter:getRank()
   local litter_type = litter_anim_to_type[self.animation_idx]
-  return litter_precedence[litter_type]
+  return litter_rank[litter_type]
 end
 
+--! Rank for a litter type before any Litter object exists.
+--! Accepts a type name ("puke", "soda_can", ...) or one of the numeric
+--! indices 1-4 used to pick a random piece of trash.
+--!param litter_type (string or int) The litter type to look up.
+--!return (int) Rank of that type, or 0 if unknown.
+function object.getRankForType(litter_type)
+  if type(litter_type) == "number" then
+    litter_type = litter_anim_to_type[litter_types[litter_type]]
+  end
+  return litter_rank[litter_type] or 0
+end
+
+--! Decide, for a tile that is about to receive new litter, what happens to the
+--! litter already on it.
+--!
+--!param objects_in_tile (array or nil) Objects currently on the tile
+--!param litter_type (string or int) Type of the litter about to be created.
+--!return (Litter or nil) Existing litter that must be removed to make room.
+--!return (bool) true if the incoming litter is outclassed and should not be
+--! created at all (the first return is then nil).
+function object.resolveTileRank(objects_in_tile, litter_type)
+  local incoming = object.getRankForType(litter_type)
+  for _, obj in ipairs(objects_in_tile or {}) do
+    if obj.object_type.id == "litter" then
+      if (obj:getRank() or 0) >= incoming then
+        return nil, true -- existing litter wins
+      end
+      return obj, false -- existing litter is outranked, displace it
+    end
+  end
+  return nil, false
+end
+
+--! Set the animation of the litter and register a cleaning task for it.
 function Litter:setLitterType(anim_type, mirrorFlag)
   if anim_type then
-    local litter_to_set_precedence = litter_precedence[anim_type]
-    local to_remove = {}
-
-    local objects_in_tile = self.world:getObjects(self.tile_x, self.tile_y)
-    for _, tileObject in ipairs(objects_in_tile) do
-
-      -- List will contain this object as it was already registered so check for it
-      if tileObject.object_type.id == "litter" and tileObject ~= self then
-        local existing_type = litter_anim_to_type[tileObject.animation_idx]
-        local existing_precedence = existing_type and litter_precedence[existing_type] or 0
-        if existing_precedence >= litter_to_set_precedence then
-          -- If existing litter on the ground has higher precedence cleanup self and return early
-          self.world:removeObjectFromTile(self, self.tile_x, self.tile_y)
-          self.world:destroyEntity(self)
-          return
-        else
-          -- Litter on ground has lower precedence and it will be substituted, so mark
-          -- it for removal from world which will remove from Handyman task list as well
-          to_remove[#to_remove + 1] = tileObject
-        end
-      end
-    end
-
-    -- remove objects that are not relevant anymore
-    for _, obj in ipairs(to_remove) do
-      obj:remove()
-    end
-
     local anim = litter_types[anim_type]
     if anim then
       self:setAnimation(anim, mirrorFlag)

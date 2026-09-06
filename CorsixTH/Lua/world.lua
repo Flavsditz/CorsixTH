@@ -2334,6 +2334,25 @@ function World:removeAllLitter(x, y)
   for _, litter in ipairs(litters) do litter:remove() end
 end
 
+--! Create a piece of litter on a tile, respecting the rank of any litter
+--! already on that tile.
+--!
+--!param litter_type (string or int) Type passed on to Litter:setLitterType.
+--!param x (int) X position of the tile.
+--!param y (int) Y position of the tile.
+--!param mirror (int) Mirror flag passed on to Litter:setLitterType.
+--!return (Litter or nil) The new litter, or nil if it was outclassed.
+function World:newLitter(litter_type, x, y, mirror)
+  local displaced, outclassed = self.object_types.litter.resolveTileRank(
+      self:getObjects(x, y), litter_type)
+  if outclassed then return end
+  if displaced then displaced:remove() end
+
+  local litter = self:newObject("litter", x, y)
+  litter:setLitterType(litter_type, mirror)
+  return litter
+end
+
 --! Prepare all tiles of the footprint for build of an object.
 --!param object_footprint Footprint of the object being build.
 --!param x (int) X position of the object
@@ -2889,7 +2908,7 @@ function World:afterLoad(old, new)
   if old < 265 then
     -- Multiple litter can no longer exist on a tile. Remove all but the highest order of litter.
 
-    -- Group litter by tile, keeping the highest-precedence item per tile. The
+    -- Group litter by tile, keeping the highest-ranked item per tile. The
     -- losers are collected and removed only afterwards otherwise it would lead to items being skipped.
     local litter_by_tile = {}
     local litter_to_remove = {}
@@ -2899,8 +2918,8 @@ function World:afterLoad(old, new)
         local current_litter = litter_by_tile[key]
         if not current_litter then
           litter_by_tile[key] = entity -- no entry was there
-        elseif (entity:getPrecedence() or 0) > (current_litter:getPrecedence() or 0) then
-          -- keep the higher-precedence item, discard the one already stored
+        elseif (entity:getRank() or 0) > (current_litter:getRank() or 0) then
+          -- keep the higher-ranked item, discard the one already stored
           litter_to_remove[#litter_to_remove + 1] = current_litter
           litter_by_tile[key] = entity
         else

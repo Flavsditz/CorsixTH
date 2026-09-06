@@ -22,7 +22,7 @@ require("class_test_base")
 local TH = require("TH")
 require("utility")
 require("entity")
-require("objects/litter")
+local litter_module = require("objects/litter")
 
 describe("litter.lua: ", function()
   local tile_x, tile_y = 5, 7
@@ -57,7 +57,7 @@ describe("litter.lua: ", function()
     return {
       world = world,
       tasks = tasks,
-      addHandymanTask = function(self, obj, taskType, priority, x, y)
+      addHandymanTask = function(self, obj, taskType, rank, x, y)
         tasks[#tasks + 1] = {object = obj, taskType = taskType, x = x, y = y}
       end,
       getIndexOfTask = function(self, x, y, taskType, obj)
@@ -95,6 +95,19 @@ describe("litter.lua: ", function()
     world.objects_on_tile[#world.objects_on_tile + 1] = existing
     existing:setLitterType(litter_type, 0)
     return existing
+  end
+
+  -- helper: mirror World:newLitter against the stubbed world, i.e. resolve
+  -- rank before the object is created, then create it if it survives.
+  local function new_litter(world, hospital, litter_type)
+    local displaced, outclassed = litter_module.resolveTileRank(
+        world:getObjects(tile_x, tile_y), litter_type)
+    if outclassed then return nil end
+    if displaced then displaced:remove() end
+    local litter = make_litter(world, hospital)
+    world.objects_on_tile[#world.objects_on_tile + 1] = litter
+    litter:setLitterType(litter_type, 0)
+    return litter
   end
 
   -- -- isCleanable ----------------------------------------------------------
@@ -157,20 +170,20 @@ describe("litter.lua: ", function()
     end)
   end)
 
-  -- -- precedence: incoming higher  -------------------------------------------
+  -- -- rank: incoming higher  -------------------------------------------
 
-  describe("precedence: higher incoming displaces lower existing", function()
+  describe("rank: higher incoming displaces lower existing", function()
     it("puke displaces banana", function()
       local world = make_world()
       local hospital = make_hospital(world)
       place_existing(world, hospital, "banana")
       assert.are.equal(1, #hospital.tasks)
 
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("puke", 0)
+      local incoming = new_litter(world, hospital, "puke")
 
       -- existing removed, incoming placed, one task for incoming
+      assert.is_not_nil(incoming)
+      assert.are.equal(1, #world.objects_on_tile)
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(incoming, hospital.tasks[1].object)
     end)
@@ -179,9 +192,7 @@ describe("litter.lua: ", function()
       local world = make_world()
       local hospital = make_hospital(world)
       place_existing(world, hospital, "paper")
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("pee", 0)
+      local incoming = new_litter(world, hospital, "pee")
 
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(incoming, hospital.tasks[1].object)
@@ -191,29 +202,27 @@ describe("litter.lua: ", function()
       local world = make_world()
       local hospital = make_hospital(world)
       place_existing(world, hospital, "soda_can")
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("dead_rat", 0)
+      local incoming = new_litter(world, hospital, "dead_rat")
 
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(incoming, hospital.tasks[1].object)
     end)
   end)
 
-  -- -- precedence: incoming lower  ---------------------------------------------
+  -- -- rank: incoming lower  ---------------------------------------------
 
-  describe("precedence: lower incoming is discarded", function()
+  describe("rank: lower incoming is discarded", function()
     it("banana does not displace puke", function()
       local world = make_world()
       local hospital = make_hospital(world)
       local existing = place_existing(world, hospital, "puke")
       local task_count_before = #hospital.tasks
 
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("banana", 0)
+      local incoming = new_litter(world, hospital, "banana")
 
-      -- existing task unchanged, incoming destroyed
+      -- nothing created, existing task unchanged
+      assert.is_nil(incoming)
+      assert.are.equal(1, #world.objects_on_tile)
       assert.are.equal(task_count_before, #hospital.tasks)
       assert.are.equal(existing, hospital.tasks[1].object)
     end)
@@ -222,26 +231,24 @@ describe("litter.lua: ", function()
       local world = make_world()
       local hospital = make_hospital(world)
       local existing = place_existing(world, hospital, "pee")
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("paper", 0)
+      local incoming = new_litter(world, hospital, "paper")
 
+      assert.is_nil(incoming)
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(existing, hospital.tasks[1].object)
     end)
   end)
 
-  -- -- precedence: equal  -------------------------------------------------------
+  -- -- rank: equal  -------------------------------------------------------
 
-  describe("precedence: equal incoming is discarded", function()
+  describe("rank: equal incoming is discarded", function()
     it("banana does not displace banana", function()
       local world = make_world()
       local hospital = make_hospital(world)
       local existing = place_existing(world, hospital, "banana")
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("banana", 0)
+      local incoming = new_litter(world, hospital, "banana")
 
+      assert.is_nil(incoming)
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(existing, hospital.tasks[1].object)
     end)
@@ -250,10 +257,9 @@ describe("litter.lua: ", function()
       local world = make_world()
       local hospital = make_hospital(world)
       local existing = place_existing(world, hospital, "puke")
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("puke", 0)
+      local incoming = new_litter(world, hospital, "puke")
 
+      assert.is_nil(incoming)
       assert.are.equal(1, #hospital.tasks)
       assert.are.equal(existing, hospital.tasks[1].object)
     end)
@@ -270,11 +276,11 @@ describe("litter.lua: ", function()
       existing:setLitterType("soot_floor", 0)
       assert.are.equal(0, #hospital.tasks)  -- soot adds no task
 
-      local incoming = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = incoming
-      incoming:setLitterType("puke", 0)
+      local incoming = new_litter(world, hospital, "puke")
 
-      -- soot still there, incoming destroyed, still no task for puke
+      -- soot still there, incoming never created, still no task for puke
+      assert.is_nil(incoming)
+      assert.are.equal(1, #world.objects_on_tile)
       assert.are.equal(0, #hospital.tasks)
     end)
 
@@ -284,12 +290,33 @@ describe("litter.lua: ", function()
       place_existing(world, hospital, "banana")
       assert.are.equal(1, #hospital.tasks)
 
-      local soot = make_litter(world, hospital)
-      world.objects_on_tile[#world.objects_on_tile + 1] = soot
-      soot:setLitterType("soot_floor", 0)
+      local soot = new_litter(world, hospital, "soot_floor")
 
       -- soot wins (99 > 1), banana removed, soot not cleanable so no task
+      assert.is_not_nil(soot)
+      assert.are.equal(1, #world.objects_on_tile)
       assert.are.equal(0, #hospital.tasks)
+    end)
+  end)
+
+  -- -- getRankForType  ------------------------------------------------
+
+  describe("getRankForType", function()
+    it("resolves named types", function()
+      assert.are.equal(4, litter_module.getRankForType("puke"))
+      assert.are.equal(2, litter_module.getRankForType("pee"))
+      assert.are.equal(1, litter_module.getRankForType("banana"))
+      assert.are.equal(99, litter_module.getRankForType("soot_floor"))
+    end)
+
+    it("resolves the numeric random-trash indices to trash rank", function()
+      for i = 1, 4 do
+        assert.are.equal(1, litter_module.getRankForType(i))
+      end
+    end)
+
+    it("returns 0 for unknown types", function()
+      assert.are.equal(0, litter_module.getRankForType("not_a_type"))
     end)
   end)
 
