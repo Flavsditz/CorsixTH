@@ -22,7 +22,7 @@ require("class_test_base")
 local TH = require("TH")
 require("utility")
 require("entity")
-local litter_module = require("objects/litter")
+require("objects/litter")
 
 describe("litter.lua: ", function()
   local tile_x, tile_y = 5, 7
@@ -100,7 +100,7 @@ describe("litter.lua: ", function()
   -- helper: mirror World:newLitter against the stubbed world, i.e. resolve
   -- rank before the object is created, then create it if it survives.
   local function new_litter(world, hospital, litter_type)
-    local displaced, outclassed = litter_module.resolveTileRank(
+    local displaced, outclassed = Litter.resolveTileRank(
         world:getObjects(tile_x, tile_y), litter_type)
     if outclassed then return nil end
     if displaced then displaced:remove() end
@@ -303,20 +303,20 @@ describe("litter.lua: ", function()
 
   describe("getRankForType", function()
     it("resolves named types", function()
-      assert.are.equal(4, litter_module.getRankForType("puke"))
-      assert.are.equal(2, litter_module.getRankForType("pee"))
-      assert.are.equal(1, litter_module.getRankForType("banana"))
-      assert.are.equal(99, litter_module.getRankForType("soot_floor"))
+      assert.are.equal(4, Litter.getRankForType("puke"))
+      assert.are.equal(2, Litter.getRankForType("pee"))
+      assert.are.equal(1, Litter.getRankForType("banana"))
+      assert.are.equal(99, Litter.getRankForType("soot_floor"))
     end)
 
     it("resolves the numeric random-trash indices to trash rank", function()
       for i = 1, 4 do
-        assert.are.equal(1, litter_module.getRankForType(i))
+        assert.are.equal(1, Litter.getRankForType(i))
       end
     end)
 
     it("returns 0 for unknown types", function()
-      assert.are.equal(0, litter_module.getRankForType("not_a_type"))
+      assert.are.equal(0, Litter.getRankForType("not_a_type"))
     end)
   end)
 

@@ -116,7 +116,7 @@ end
 --! indices 1-4 used to pick a random piece of trash.
 --!param litter_type (string or int) The litter type to look up.
 --!return (int) Rank of that type, or 0 if unknown.
-function object.getRankForType(litter_type)
+function Litter.getRankForType(litter_type)
   if type(litter_type) == "number" then
     litter_type = litter_anim_to_type[litter_types[litter_type]]
   end
@@ -131,8 +131,8 @@ end
 --!return (Litter or nil) Existing litter that must be removed to make room.
 --!return (bool) true if the incoming litter is outclassed and should not be
 --! created at all (the first return is then nil).
-function object.resolveTileRank(objects_in_tile, litter_type)
-  local incoming = object.getRankForType(litter_type)
+function Litter.resolveTileRank(objects_in_tile, litter_type)
+  local incoming = Litter.getRankForType(litter_type)
   for _, obj in ipairs(objects_in_tile or {}) do
     if obj.object_type.id == "litter" then
       if (obj:getRank() or 0) >= incoming then

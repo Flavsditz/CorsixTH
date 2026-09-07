@@ -2343,8 +2343,7 @@ end
 --!param mirror (int) Mirror flag passed on to Litter:setLitterType.
 --!return (Litter or nil) The new litter, or nil if it was outclassed.
 function World:newLitter(litter_type, x, y, mirror)
-  local displaced, outclassed = self.object_types.litter.resolveTileRank(
-      self:getObjects(x, y), litter_type)
+  local displaced, outclassed = Litter.resolveTileRank(self:getObjects(x, y), litter_type)
   if outclassed then return end
   if displaced then displaced:remove() end
 
